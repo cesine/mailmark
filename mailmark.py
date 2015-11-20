@@ -20,6 +20,7 @@ def normalize_email(email):
 
 class MailArchive(object):
     def __init__(self, base_url):
+        print ' mail archive init'
         self.base_url = base_url
         self._archives = None
 
@@ -40,10 +41,14 @@ class MailArchive(object):
 
     def download(self):
         r = requests.get(self.base_url)
-        soup = bs4.BeautifulSoup(r.text)
-        rel_archive_urls = [t['href'] for t in soup.find_all('a') if t['href'].endswith('.gz')]
+        print 'downloading  %s' % r.text
+        soup = bs4.BeautifulSoup(r.text, "html.parser")
+        print soup.find_all('a')
+        rel_archive_urls = [t['href'] for t in soup.find_all('a') if  1  > 2]
         abs_urls = [urlparse.urljoin(self.base_url, rel_url) for rel_url in rel_archive_urls]
+        print 'abs_urls %s rel_archive_urls  %s' % (abs_urls, rel_archive_urls)
         for abs_url in abs_urls:
+            print 'downloading %s ' % abs_url
             if not self.is_cached(abs_url):
                 arch = self.download_archive(abs_url)
                 self.cache_url(abs_url, arch)
@@ -58,12 +63,14 @@ class MailArchive(object):
             urls = open(self.cache_path(self.base_url))
             self._archives = []
             for url in urls:
+                print 'adding url to cache %s ' % url
                 cache_path = self.cache_path(url.strip())
                 if os.path.exists(cache_path):
                     self._archives.append(mailbox.mbox(cache_path))
         return self._archives
 
     def authors(self):
+        print 'get authors'
         authors = set()
         for archive in self.archives():
             for message in archive:
@@ -98,13 +105,15 @@ class Message(object):
 
 # TODO(scotty): make a class
 def choice(words):
+
     random.seed
     index = random.randint(0, len(words) - 1)
+    # print 'choosing from %s' % words
     return words[index]
 
 
 def test_sentence_substrings(sentence, text, n=6):
-    
+
     words = string.split(sentence)
 
     groups = [words[i:i+n] for i in range(0, len(words), n)]
@@ -118,10 +127,11 @@ def test_sentence_substrings(sentence, text, n=6):
 
 
 def run(text):
-
+    print 'running with %s ' % text
     text = re.sub(r'\([^)]*\)', '', text)
 
-    words = string.split(text)
+    words = re.split('\s+', text.replace('\.', ' '))
+    print 'running with %s ' % words
 
     arr = []
     end_sentence = []
@@ -135,10 +145,15 @@ def run(text):
                 dict[key].append(word)
             else:
                 dict[key] = [word]
-                if re.match("[\.\?\!]", prev1[-1:]):
+                if re.match("[.?!]", prev1[-1:]):
                     end_sentence.append(key)
+                #     print 'end of sentence %s ' % word
+                # else:
+                #     print 'not end of sentence %s ' % word
         prev2 = prev1
         prev1 = word
+
+    # print 'end_sentence %s ' % end_sentence
 
     if end_sentence == []:
         return
@@ -150,15 +165,17 @@ def run(text):
     sentence = []
     attempts = 0
 
+    # while len(sentence) < 50:
     while 1:
+        # print 'looping '
         if dict.has_key(key):
             word = choice(dict[key])
             sentence.append(word)
             key = (key[1], word)
             if key in end_sentence:
-                sentence_str = " ".join(sentence) 
+                sentence_str = " ".join(sentence)
                 attempts += 1
-                
+
                 # check if the beginning of sentence occurs in the text
                 if sentence_str[:15] not in gtext and sentence_str not in text and test_sentence_substrings(sentence_str, text):
                     gtext += sentence_str + " "
@@ -170,18 +187,21 @@ def run(text):
                     break
         else:
             key = choice(end_sentence)
-            
+
     return gtext
 
-def main(url, email):
-    if not os.path.exists('cache/'):
-        os.mkdir('cache/')
-    mail_archive = MailArchive(url)
-    mail_archive.download()
-    print mail_archive.authors()
-    messages = mail_archive.messages_by_author(email)
-    text = '\n\n'.join([Message(m).body() for m in messages])
+def main(text):
+    # if not os.path.exists('cache/'):
+    #     os.mkdir('cache/')
+    # mail_archive = MailArchive(url)
+    # mail_archive.download()
+    # print mail_archive.authors()
+    # messages = mail_archive.messages_by_author(email)
+    # text = '\n\n'.join([Message(m).body() for m in messages])
+
+    # text = 'That one is this one and this one is that one. Then we had another one too.'
+    # text = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum'
     print run(text)
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1])
